@@ -1,0 +1,21 @@
+{
+  "name": "gcalendar-2-redmine",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "clasp": "clasp",
+    "push": "clasp push",
+    "push:watch": "clasp push -w -f"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@google/clasp": "^2.3.0",
+    "@types/google-apps-script": "^1.0.14",
+    "typescript": "^3.9.3"
+  }
+}
