@@ -1,10 +1,10 @@
 // @TODO: Get the activities from service
 
-const DEVELOPMENT_ACTIVITY = 9;
+const DEVELOPMENT_ACTIVITY = 'Development';
 const ACTIVITIES = {
     'Content'       : 15,
     'Design'        : 8,
-    'Development'   : DEVELOPMENT_ACTIVITY,
+    'Development'   : 9,
     'Documentation' : 23,
     'HR'            : 54,
     'Maintenance'   : 26,
@@ -23,3 +23,21 @@ const ACTIVITIES = {
     'Revisions'     : 29,
     'RFP'           : 110,
 };
+
+function getActivityByValue (value) {
+    const valueToFind = parseInt(value, 10);
+
+    if(!valueToFind) {
+        return false;
+    }
+
+    let keyToReturn = '';
+    Object.keys(ACTIVITIES).forEach((key) => {
+        const activity = ACTIVITIES[key];
+        if (activity === valueToFind) {
+            keyToReturn = key
+        }
+    });
+
+    return keyToReturn;
+}

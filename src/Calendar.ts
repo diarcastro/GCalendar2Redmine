@@ -3,7 +3,6 @@ const DEFAULT_HOURS 			= '0.5';
 const NEW_TIME_ENTRY_URL 		= 'https://rm.ewdev.ca/projects/operations/time_entries/new?';
 const SAVED_ON_REDMINE_COLOR	= '8'; // Gray from https://developers.google.com/apps-script/reference/calendar/event-color
 const SAVED_ON_REDMINE_TEXT 	= '✅';
-const TAG_ACTIVITY 				= 'activity';
 
 /**
  * Some error messages
@@ -63,7 +62,7 @@ function onCalendarEventOpen(e: any, saved: boolean = false): GoogleAppsScript.C
 		.setHint('Type comments for the issue')
 		.setFieldName('comments');
 
-	const eventActivity = parseInt(event.getTag(TAG_ACTIVITY)) || DEVELOPMENT_ACTIVITY;
+	const eventActivity = event.getLocation() || DEVELOPMENT_ACTIVITY;
 	const issueActivityWidget = CardService.newSelectionInput()
 		.setTitle('Activity')
 		.setType(CardService.SelectionInputType.DROPDOWN)
@@ -71,7 +70,7 @@ function onCalendarEventOpen(e: any, saved: boolean = false): GoogleAppsScript.C
 
 	Object.keys(ACTIVITIES).forEach((key: string) => {
 		const activity = ACTIVITIES[key];
-		issueActivityWidget.addItem(key, activity, activity === eventActivity);
+		issueActivityWidget.addItem(key, activity, key === eventActivity);
 	});
 
 	const section = CardService.newCardSection()
@@ -159,8 +158,15 @@ function saveEventOnRedmine(e: any) {
 		calendarEvent.setColor(SAVED_ON_REDMINE_COLOR);
 
 		const calendarTitle = calendarEvent.getTitle();
+		const activity 		= getActivityByValue(formData.activity_id);
 		calendarEvent.setTitle(`${SAVED_ON_REDMINE_TEXT}[${timeEntryId}]${calendarTitle}`);
-		calendarEvent.setTag(TAG_ACTIVITY, formData.activity_id);
+		calendarEvent.setLocation(activity || '');
+
+		// Update event description if the user edited the feld before saving
+		if (calendarEvent.getTitle() !== formData.comments && calendarEvent.getDescription() !== formData.comments) {
+			calendarEvent.setDescription(formData.comments);
+		}
+
 		return onCalendarEventOpen(e, true);
 	}
 
