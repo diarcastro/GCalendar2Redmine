@@ -15,7 +15,9 @@
     "https://www.googleapis.com/auth/gmail.addons.current.action.compose",
     "https://www.googleapis.com/auth/gmail.addons.current.message.readonly",
     "https://www.googleapis.com/auth/gmail.addons.execute",
-    "https://www.googleapis.com/auth/script.locale"
+
+    "https://www.googleapis.com/auth/script.locale",
+    "https://www.googleapis.com/auth/script.external_request"
   ],
   "addOns": {
     "common": {
@@ -30,14 +32,16 @@
         "primaryColor": "#74B74A",
         "secondaryColor": "#333333"
       },
-      "universalActions": [{
-        "label": "GCalendar2Redmine",
-        "openLink": "https://evolvingweb.ca/about/diego-castro"
-      },
-      {
-        "label": "EW Redmine",
-        "openLink": "https://rm.ewdev.ca/projects"
-      }],
+      "universalActions": [
+        {
+          "label": "Configuration",
+          "runFunction": "onConfiguration"
+        },
+        {
+          "label": "About",
+          "runFunction": "onAbout"
+        }
+      ],
       "openLinkUrlPrefixes": [
         "https://evolvingweb.ca/",
         "https://rm.ewdev.ca/"

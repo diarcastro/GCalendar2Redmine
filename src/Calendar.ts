@@ -1,9 +1,9 @@
-const REDMINE_CALENDAR_NAME = 'My Redmine';
-const DEFAULT_HOURS = '0.5';
-const NEW_TIME_ENTRY_URL = 'https://rm.ewdev.ca/projects/operations/time_entries/new?';
-const SAVED_ON_REDMINE_COLOR = '8'; // Gray  from https://developers.google.com/apps-script/reference/calendar/event-color
-// const SAVED_ON_REDMINE_TAG = 'SAVED_ON_REDMINE'
-const SAVED_ON_REDMINE_TEXT = '[SAVED] - ';
+const REDMINE_CALENDAR_NAME 	= 'My Redmine';
+const DEFAULT_HOURS 			= '0.5';
+const NEW_TIME_ENTRY_URL 		= 'https://rm.ewdev.ca/projects/operations/time_entries/new?';
+const SAVED_ON_REDMINE_COLOR	= '8'; // Gray from https://developers.google.com/apps-script/reference/calendar/event-color
+const SAVED_ON_REDMINE_TEXT 	= '✅';
+const TAG_ACTIVITY 				= 'activity';
 
 /**
  * Some error messages
@@ -20,9 +20,9 @@ const enum ERRORS {
  * @param The event object.
  * @return The card to show to the user.
  */
-function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
-	const calendar = CalendarApp.getCalendarById(e?.calendar?.calendarId);
-	const calendarName = calendar?.getName();
+function onCalendarEventOpen(e: any, saved: boolean = false): GoogleAppsScript.Card_Service.Card {
+	const calendar 		= CalendarApp.getCalendarById(e?.calendar?.calendarId);
+	const calendarName 	= calendar?.getName();
 
 	if (calendarName !== REDMINE_CALENDAR_NAME) {
 		return createTextCard(ERRORS.REDMINE_CALENDAR);
@@ -33,30 +33,25 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 		return createTextCard(ERRORS.NO_EVENT_CREATED);
 	}
 
-	const eventTitle = event.getTitle();
-	const eventDescription = event.getDescription();
-	const eventStartTime = event.getStartTime();
-	const eventEndTime = event.getEndTime();
-	const hours = timeDiff(eventStartTime, eventEndTime);
-
-	const regexp = /(?<saved>\[SAVED\])*([ #]*)(?<issue>[0-9]*)([: ]+)(?<comments>.*)/igm;
-	const matches = regexp.exec(eventTitle) as any;
-
-	const issueId = matches?.groups?.issue || '#####';
-	const issueDescription = matches?.groups?.comments || '';
-	const issueSaved = matches?.groups?.saved || false;
-
+	const eventTitle 		= event.getTitle();
+	const eventDescription 	= event.getDescription();
+	const eventStartTime 	= event.getStartTime();
+	const eventEndTime 		= event.getEndTime();
+	const hours 			= timeDiff(eventStartTime, eventEndTime);
+	const regexp 			= /(?<saved>✅)*(\[(?<id>[0-9]*)\])*([ #-]*)(?<issue>[0-9]*)([: ]+)(?<comments>.*)/igm;
+	const matches 			= regexp.exec(eventTitle) as any;
+	const issueId 			= matches?.groups?.issue 	|| '#####';
+	const issueDescription 	= matches?.groups?.comments || '';
+	const issueSaved 		= matches?.groups?.saved 	|| false;
+	const timeEntryId 		= matches?.groups?.id 		|| false;
 	// @TODO: Verify is the event was already created on Redmine by using the API
-	const isSaved = issueSaved? true : false; // event.getTag(SAVED_ON_REDMINE_TAG) ? true : false;
-
-	const issueIdWidget = CardService.newTextInput().setTitle('Issue ID').setValue(issueId).setFieldName('issue_id');
-
-	const issueDateWidget = CardService.newDatePicker()
+	const isSaved 			= issueSaved ? true : false; // event.getTag(SAVED_ON_REDMINE_TAG) ? true : false;
+	const issueIdWidget 	= CardService.newTextInput().setTitle('Issue ID').setValue(issueId).setFieldName('issue_id');
+	const issueDateWidget 	= CardService.newDatePicker()
 		.setTitle('Issue Date')
 		.setValueInMsSinceEpoch(eventStartTime.getTime())
 		.setFieldName('spent_on');
-
-	const issueHoursWidget = CardService.newTextInput()
+	const issueHoursWidget 	= CardService.newTextInput()
 		.setValue(hours.toString() || DEFAULT_HOURS)
 		.setTitle('Hours')
 		.setHint('e.g.: 2.5')
@@ -68,37 +63,16 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 		.setHint('Type comments for the issue')
 		.setFieldName('comments');
 
+	const eventActivity = parseInt(event.getTag(TAG_ACTIVITY)) || DEVELOPMENT_ACTIVITY;
 	const issueActivityWidget = CardService.newSelectionInput()
 		.setTitle('Activity')
-		.addItem('Content', '15', false)
-		.addItem('Design', '8', false)
-		.addItem('Development', '9', true)
-		.addItem('Documentation', '23', false)
-		.addItem('HR', '54', false)
-		.addItem('Maintenance', '26', false)
-		.addItem('Marketing', '49', false)
-		.addItem('Operations', '52', false)
-		.addItem('Other', '53', false)
-		.addItem('Planning', '14', false)
-		.addItem('Project', '18', false)
-		.addItem('QA', '27', false)
-		.addItem('Research', '11', false)
-		.addItem('Themeing', '17', false)
-		.addItem('Training', '22', false)
-		.addItem('Emails', '50', false)
-		.addItem('Copy', '51', false)
-		.addItem('Module', '16', false)
-		.addItem('Revisions', '29', false)
-		.addItem('RFP', '110', false)
 		.setType(CardService.SelectionInputType.DROPDOWN)
 		.setFieldName('activity_id');
 
-	const saveOnRedmineAction = CardService.newAction().setFunctionName('saveEventOnRedmine');
-	const saveButtonWidget = CardService.newTextButton()
-		.setText('Save on Redmine')
-		.setTextButtonStyle(CardService.TextButtonStyle.FILLED)
-		.setDisabled(isSaved)
-		.setOnClickAction(saveOnRedmineAction);
+	Object.keys(ACTIVITIES).forEach((key: string) => {
+		const activity = ACTIVITIES[key];
+		issueActivityWidget.addItem(key, activity, activity === eventActivity);
+	});
 
 	const section = CardService.newCardSection()
 		.addWidget(issueIdWidget)
@@ -107,31 +81,56 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 		.addWidget(issueCommentsWidget)
 		.addWidget(issueActivityWidget);
 
+	const footerSection = CardService.newFixedFooter();
+
+	if (timeEntryId) {
+		const visitTimeEntryWidget = CardService.newTextButton()
+			.setText('See on Redmine')
+			.setTextButtonStyle(CardService.TextButtonStyle.TEXT)
+			.setOpenLink(
+				CardService.newOpenLink()
+					.setUrl(`${REDMINE_API_URL}/time_entries/${timeEntryId}/edit`)
+			);
+
+		section.addWidget(visitTimeEntryWidget);
+	} else {
+		const saveOnRedmineAction	= CardService.newAction().setFunctionName('saveEventOnRedmine');
+		const saveButtonWidget 		= CardService.newTextButton()
+			.setText('Save on Redmine')
+			.setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+			.setOnClickAction(saveOnRedmineAction);
+
+		footerSection.setPrimaryButton(saveButtonWidget);
+	}
+
 	const headerSection = CardService.newCardHeader()
 		.setTitle(`${isSaved ? 'This time entry is already saved on Redmine':'New Redmine time entry for:'}`)
 		.setSubtitle(eventTitle);
-	const footerSection = CardService.newFixedFooter().setPrimaryButton(saveButtonWidget);
 
 	const card = CardService.newCardBuilder()
 		.setHeader(headerSection)
-		.addSection(section)
+		.addSection(section);
+
+	if (!timeEntryId) {
 		// @ts-ignore // there is no documentation for the next method
-		.setFixedFooter(footerSection);
+		card.setFixedFooter(footerSection);
+	}
 	return card.build();
+}
+
+interface ETimeEntry {
+	issue_id?	: string;
+	spent_on?	: string;
+	hours?		: string;
+	comments?	: string;
+	activity_id?: string;
 }
 
 function saveEventOnRedmine(e: any) {
 	const SPENT_ON_FIELD = 'spent_on';
 	const form = e.formInputs;
-	const calendarEvent = getCalendarEvent(e.calendar);
-
-	calendarEvent.setColor(SAVED_ON_REDMINE_COLOR);
-	// calendarEvent.setTag(SAVED_ON_REDMINE_TAG, '');
-
-	const calendarTitle = calendarEvent.getTitle();
-	calendarEvent.setTitle(`${SAVED_ON_REDMINE_TEXT}${calendarTitle}`);
-
-	let queryParams = '';
+	const formData:ETimeEntry = {};
+	const data = {};
 
 	Object.keys(form).forEach((key) => {
 		const field = form[key];
@@ -141,42 +140,35 @@ function saveEventOnRedmine(e: any) {
 			const date = new Date(fieldValue.msSinceEpoch);
 			const offset = date.getTimezoneOffset();
 			date.setMinutes(date.getMinutes() + offset);
-			fieldValue = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+			const month = date.getMonth() + 1;
+			const day = date.getDate();
+			const paddedMonth 	= month.toString().padStart(2, '0');
+			const paddedday 	= day.toString().padStart(2, '0');
+
+			fieldValue = `${date.getFullYear()}-${paddedMonth}-${paddedday}`;
 		}
-		queryParams += `time_entry[${key}]=${encodeURI(fieldValue)}&`;
+		formData[key] = fieldValue;
+		data[`time_entry[${key}]`] = fieldValue;
 	});
 
-	const newTimeEntryUrl = `${NEW_TIME_ENTRY_URL}${queryParams}`;
+	const timeEntryId 	= saveSpentTime(data);
 
-	/* console.log('newTimeEntryUrl', newTimeEntryUrl);
+	if (timeEntryId) {
+		const calendarEvent = getCalendarEvent(e.calendar);
 
-	const requestHeaders = {
-	  'Authorization': 'Basic ZGllZ28uY2FzdHJvOmUyODNUNioySTlrOXVTNiV1QXIhTkRQRGExaGI0IU9D'
-	};
+		calendarEvent.setColor(SAVED_ON_REDMINE_COLOR);
 
-	const requestOptions: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
-	  contentType: 'application/json',
-	  headers: requestHeaders
-	};
-
-	const fetchResponse = UrlFetchApp.fetch('https://rm.ewdev.ca/time_entries/84610.json', requestOptions);
-	const body = fetchResponse.getContentText();
-
-	console.log('BODY', body); */
+		const calendarTitle = calendarEvent.getTitle();
+		calendarEvent.setTitle(`${SAVED_ON_REDMINE_TEXT}[${timeEntryId}]${calendarTitle}`);
+		calendarEvent.setTag(TAG_ACTIVITY, formData.activity_id);
+		return onCalendarEventOpen(e, true);
+	}
 
 	return CardService.newActionResponseBuilder()
-		.setOpenLink(
-			CardService.newOpenLink()
-				.setUrl(newTimeEntryUrl)
-				.setOpenAs(CardService.OpenAs.FULL_SIZE)
-				.setOnClose(CardService.OnClose.RELOAD_ADD_ON)
+		.setNotification(
+			CardService.newNotification().setText('There was an error trying to ave the time entry')
 		)
 		.build();
-
-	// return CardService.newActionResponseBuilder()
-	//     .setNotification(CardService.newNotification()
-	//         .setText('Redmine spent time was created!'))
-	//     .build();
 }
 
 /**
