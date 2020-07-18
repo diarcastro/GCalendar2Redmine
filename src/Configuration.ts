@@ -4,7 +4,7 @@ function onConfiguration () {
 	const redmineTokenWidget    = CardService.newTextInput()
 		.setTitle('Redmine User API access key')
 		.setValue(savedToken || '')
-		.setHint('This token should be find it in the Redmine user account section')
+		.setHint('This token should be in the Redmine user account section. e.g. https://myredmine.com/my/api_key')
 		.setFieldName(User.API_TOKEN);
 
 	const redmineApiUrlWidget    = CardService.newTextInput()
@@ -15,16 +15,6 @@ function onConfiguration () {
 
 	const onSaveUserConfigAction = CardService.newAction()
 		.setMethodName('onSaveUserConfig');
-
-	// let apiLinkWidget = null;
-	// if (savedApiUrl && Utils.isURL(savedApiUrl)) {
-	// // 	apiLinkWidget = CardService.newTextButton()
-	// // 		.setText('Where can I find it?')
-	// // 		.setTextButtonStyle(CardService.TextButtonStyle.TEXT)
-	// // 		.setOpenLink(
-	// // 			CardService.newOpenLink().setUrl(`${savedApiUrl}/my/api_key`)
-	// // 		);
-	// }
 
 	const saveUserConfigWIdget = CardService.newTextButton()
 		.setText('Save')
@@ -49,7 +39,8 @@ function onSaveUserConfig (e: any) {
 	const apiToken = e.formInput[User.API_TOKEN] || '';
 	const apiUrl = e.formInput[User.API_URL] || '';
 	const isValidUrl = Utils.isURL(apiUrl);
-	let errorMessage;
+	let errorMessage = '';
+	let errorState = false;
 
 	const currentProperties = PropertiesService.getUserProperties();
 	currentProperties.setProperty(User.API_TOKEN, apiToken);
@@ -58,14 +49,25 @@ function onSaveUserConfig (e: any) {
 		currentProperties.setProperty(User.API_URL, apiUrl);
 	} else {
 		currentProperties.setProperty(User.API_URL, '');
+		errorState = true;
 		errorMessage = 'but, Redmine API Server URL is not a valid URL. Please fix it.';
 	}
 
-	const message = `User configuration was saved ${errorMessage}`;
+	const message 	 	 = `User configuration was saved ${errorMessage}`;
+	const actionResponse = CardService.newActionResponseBuilder();
 
-	return CardService.newActionResponseBuilder()
-	    .setNotification(CardService.newNotification()
-			.setText(message))
-			.setStateChanged(true)
+	if (!errorState) {
+		const homeCard = onHomepage(e);
+		const navigation =  CardService.newNavigation()
+			.popToRoot()
+			.pushCard(homeCard);
+		actionResponse.setNavigation(navigation);
+	}
+	return actionResponse
+	    .setNotification(
+			CardService.newNotification()
+			.setText(message)
+		)
+		.setStateChanged(true)
 	    .build();
 }

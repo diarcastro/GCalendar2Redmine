@@ -4,6 +4,7 @@ const HTTP_RESPONSE_CREATED = 201;
 class Redmine {
     public readonly HTTP_RESPONSE_CREATED = 201;
     public readonly TIME_ENTRIES = 'time_entries.json';
+    public readonly TIME_ENTRY_ACTIVITIES = 'enumerations/time_entry_activities.json';
 
     private _apiUrl = '';
 
@@ -12,7 +13,7 @@ class Redmine {
     }
 
     saveSpentTime (params: GoogleAppsScript.URL_Fetch.Payload): string {
-        const response = this._fetch(this.TIME_ENTRIES, params);
+        const response = this._fetch(this.TIME_ENTRIES, params, 'post');
 
         if (response) {
             const { time_entry: { id = null } = {}} =  response;
@@ -59,7 +60,16 @@ class Redmine {
         return timeEntries;
     }
 
-    private _fetch (action, payload, method = 'post') {
+    getActivities (): IActivityResponse[] {
+        const response = this._fetch(this.TIME_ENTRY_ACTIVITIES, {});
+        const {
+            time_entry_activities: activities = []
+        } = response;
+
+        return activities;
+    }
+
+    private _fetch (action, payload, method = 'get') {
         const headers = this._getRequestHeaders();
         const requestOptions: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
             headers,

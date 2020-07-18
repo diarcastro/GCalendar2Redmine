@@ -30,6 +30,13 @@ const User = {
         return null;
     },
 
+    hasConfiguration (): boolean {
+        const apiUrl = this.getRedmineApiUrl() || false;
+        const token = this.getRedmineApiToken() || false;
+
+        return apiUrl && token;
+    },
+
     getRedmineApiToken (encrypt: boolean = false, returnAsHeader:boolean =  false):string {
         const currentProperties = PropertiesService.getUserProperties();
         const savedToken = currentProperties.getProperty(this.API_TOKEN);

@@ -6,10 +6,16 @@
 function onHomepage(e: any, timestamp: number = null): GoogleAppsScript.Card_Service.Card {
 	// console.log('onHomepage event', e, timestamp, User.getLastSelectedDate());
 
+	const hasConfiguration = User.getRedmineApiUrl();
+	if(!hasConfiguration) {
+		return onConfiguration();
+	}
+
 	const calendars = CalendarApp.getCalendarsByName(REDMINE_CALENDAR_NAME);
 	const [ calendar ] = calendars;
 	if (!calendar) {
 		return createTextCard(`Please be sure you have a calendar named ${REDMINE_CALENDAR_NAME}`);
+
 	}
 
 	const { userTimezone : { offSet = 0 } = {} } = e;
@@ -121,7 +127,10 @@ function onHomepage(e: any, timestamp: number = null): GoogleAppsScript.Card_Ser
 	}
 
 	if (eventsData.saved.count) {
-		const totalHoursWidget = CardService.newTextParagraph().setText(`<font color="#46a909"><b>Total Hours: ${eventsData.saved.totalHours}</b></font>`);
+		const collapsible 		= eventsData.forSaving.count ? true : false;
+		const totalHoursWidget 	= CardService.newTextParagraph().setText(`<font color="#46a909"><b>Total Hours: ${eventsData.saved.totalHours}</b></font>`);
+
+		savedEventsSection.setCollapsible(collapsible);
 		savedEventsSection.addWidget(totalHoursWidget);
 		card.addSection(savedEventsSection);
 	}
@@ -191,7 +200,7 @@ function saveEventsOnRedmine (event) {
 				});
 
 				const timeEntries = redmineRequests.saveSpentTimeBatch(dataToSave);
-				responseMessage = `${timeEntries.entries} ${responseMessage}`;
+				responseMessage = `${timeEntries.length} ${responseMessage}`;
 				eventsToSave.forEach((event, index) => {
 					const timeEntry = timeEntries[index];
 

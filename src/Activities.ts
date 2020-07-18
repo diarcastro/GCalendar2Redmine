@@ -1,4 +1,10 @@
 // @TODO: Get the activities from service
+interface IActivityResponse {
+    id: number;
+    name: string;
+    is_default: boolean;
+    active: boolean;
+}
 
 const DEVELOPMENT_ACTIVITY = 'Development';
 const ACTIVITIES = {
