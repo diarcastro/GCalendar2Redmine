@@ -41,3 +41,14 @@ function getActivityByValue (value) {
 
     return keyToReturn;
 }
+
+function getActivityValue (keyToFind):number {
+    let keyToReturn = 9;
+    Object.keys(ACTIVITIES).forEach((key) => {
+        if (key === keyToFind) {
+            keyToReturn = ACTIVITIES[key]
+        }
+    });
+
+    return keyToReturn;
+}

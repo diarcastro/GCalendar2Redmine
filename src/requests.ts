@@ -1,37 +1,100 @@
 const HTTP_RESPONSE_CREATED = 201;
 
-function getRequestHeaders () {
-    return {
-        Authorization               : getRedmineApiToken(true, true),
-        'CF-Access-Client-ID'       : CLIENT_ID,
-        'CF-Access-Client-Secret'   : CLIENT_SECRET,
-    };
-}
 
-function saveSpentTime (params: any) {
-    const headers = getRequestHeaders();
-    const requestOptions: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
-        headers,
-        method: 'post',
-        payload: params,
-    };
+class Redmine {
+    public readonly HTTP_RESPONSE_CREATED = 201;
+    public readonly TIME_ENTRIES = 'time_entries.json';
 
-    const url           = `${REDMINE_API_URL}/time_entries.json`;
-    const fetchResponse = UrlFetchApp.fetch(url, requestOptions);
-    const body          = fetchResponse.getContentText();
-    const responseCode  = fetchResponse.getResponseCode();
+    private _apiUrl = '';
 
-    if (responseCode === HTTP_RESPONSE_CREATED) {
-        try{
-            const data = JSON.parse(body);
-            const timeEntry = data && data.time_entry;
-            const timeEntryId   = timeEntry && timeEntry.id;
-
-            return timeEntryId;
-        } catch (e) {
-
-        }
+    constructor () {
+        this._apiUrl = User.getRedmineApiUrl();
     }
 
-    return false;
+    saveSpentTime (params: GoogleAppsScript.URL_Fetch.Payload): string {
+        const response = this._fetch(this.TIME_ENTRIES, params);
+
+        if (response) {
+            const { time_entry: { id = null } = {}} =  response;
+            return id;
+        }
+
+        return null;
+    }
+
+    saveSpentTimeBatch (data: GoogleAppsScript.URL_Fetch.Payload[]): string[] {
+        const timeEntries = [];
+        const requests = data.map((timeEntryData) => {
+            const headers = this._getRequestHeaders();
+            const requestUrl = `${this._apiUrl}/${this.TIME_ENTRIES}`;
+            const request = {
+                url: requestUrl,
+                headers,
+                method: 'post',
+                payload: timeEntryData
+            }
+
+            return request as GoogleAppsScript.URL_Fetch.URLFetchRequest;
+        });
+
+        if (requests && requests.length) {
+            const responses = UrlFetchApp.fetchAll(requests);
+            if (responses && responses.length) {
+                return responses.map(response => {
+                    const responseCode = response.getResponseCode();
+                    if (responseCode === HTTP_RESPONSE_CREATED) {
+                        try {
+                            const body      = response.getContentText();
+                            const jsonData  = JSON.parse(body);
+                            const { time_entry: { id = null } = {}} =  jsonData;
+
+                            return id;
+                        } catch (e) {}
+                    }
+                    return null;
+                });
+            }
+        }
+
+        return timeEntries;
+    }
+
+    private _fetch (action, payload, method = 'post') {
+        const headers = this._getRequestHeaders();
+        const requestOptions: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
+            headers,
+            method: method as GoogleAppsScript.URL_Fetch.HttpMethod,
+            payload,
+        };
+
+        const requestUrl    = `${this._apiUrl}/${action}`;
+        const fetchResponse = UrlFetchApp.fetch(requestUrl, requestOptions);
+        const responseCode  = fetchResponse.getResponseCode();
+
+        if (responseCode === HTTP_RESPONSE_CREATED) {
+            try{
+                const body = fetchResponse.getContentText();
+                return JSON.parse(body);
+            } catch (e) {}
+        }
+
+        return false;
+    }
+
+    private _getRequestHeaders (): GoogleAppsScript.URL_Fetch.HttpHeaders {
+        const headers = {
+            Authorization: User.getRedmineApiToken(true, true),
+        };
+
+        const isEvolvingWebEmail = User._isEvolvingWebEmail();
+
+        if (isEvolvingWebEmail) { // Cloudflare tokens
+            headers['CF-Access-Client-ID']      = CLIENT_ID;
+            headers['CF-Access-Client-Secret']  = CLIENT_SECRET;
+        }
+
+        return headers;
+    }
 }
+
+const redmineRequests = new Redmine();

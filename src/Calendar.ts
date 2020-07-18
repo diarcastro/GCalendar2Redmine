@@ -1,9 +1,3 @@
-const REDMINE_CALENDAR_NAME 	= 'My Redmine';
-const DEFAULT_HOURS 			= '0.5';
-const NEW_TIME_ENTRY_URL 		= 'https://rm.ewdev.ca/projects/operations/time_entries/new?';
-const SAVED_ON_REDMINE_COLOR	= '8'; // Gray from https://developers.google.com/apps-script/reference/calendar/event-color
-const SAVED_ON_REDMINE_TEXT 	= '✅';
-
 /**
  * Some error messages
  */
@@ -19,7 +13,9 @@ const enum ERRORS {
  * @param The event object.
  * @return The card to show to the user.
  */
-function onCalendarEventOpen(e: any, saved: boolean = false): GoogleAppsScript.Card_Service.Card {
+function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
+	console.log('onCalendarEventOpen', e, 'lastSelectedDate', User.getLastSelectedDate());
+
 	const calendar 		= CalendarApp.getCalendarById(e?.calendar?.calendarId);
 	const calendarName 	= calendar?.getName();
 
@@ -32,33 +28,32 @@ function onCalendarEventOpen(e: any, saved: boolean = false): GoogleAppsScript.C
 		return createTextCard(ERRORS.NO_EVENT_CREATED);
 	}
 
-	const eventTitle 		= event.getTitle();
-	const eventDescription 	= event.getDescription();
-	const eventStartTime 	= event.getStartTime();
-	const eventEndTime 		= event.getEndTime();
-	const hours 			= timeDiff(eventStartTime, eventEndTime);
-	const regexp 			= /(?<saved>✅)*(\[(?<id>[0-9]*)\])*([ #-]*)(?<issue>[0-9]*)([: ]+)(?<comments>.*)/igm;
-	const matches 			= regexp.exec(eventTitle) as any;
-	const issueId 			= matches?.groups?.issue 	|| '#####';
-	const issueDescription 	= matches?.groups?.comments || '';
-	const issueSaved 		= matches?.groups?.saved 	|| false;
-	const timeEntryId 		= matches?.groups?.id 		|| false;
-	// @TODO: Verify is the event was already created on Redmine by using the API
-	const isSaved 			= issueSaved ? true : false; // event.getTag(SAVED_ON_REDMINE_TAG) ? true : false;
+	/* @Remove: DEBUG PURPOSES */
+	// event.setTag(TAGS.TIME_ENTRY_ID, '');
+
+	const eventData = EventUtils.parseEvent(event);
+	const {
+		issueId,
+		title,
+		description,
+		hours,
+		timeEntryId,
+	} = eventData;
+
 	const issueIdWidget 	= CardService.newTextInput().setTitle('Issue ID').setValue(issueId).setFieldName('issue_id');
-	const issueDateWidget 	= CardService.newDatePicker()
-		.setTitle('Issue Date')
-		.setValueInMsSinceEpoch(eventStartTime.getTime())
-		.setFieldName('spent_on');
+	// const issueDateWidget 	= CardService.newDatePicker()
+	// 	.setTitle('Issue Date')
+	// 	.setValueInMsSinceEpoch(eventStartTime.getTime())
+	// 	.setFieldName('spent_on');
 	const issueHoursWidget 	= CardService.newTextInput()
-		.setValue(hours.toString() || DEFAULT_HOURS)
+		.setValue(hours.toString())
 		.setTitle('Hours')
 		.setHint('e.g.: 2.5')
 		.setFieldName('hours');
 
 	const issueCommentsWidget = CardService.newTextInput()
 		.setTitle('Comments')
-		.setValue(eventDescription || issueDescription)
+		.setValue(description)
 		.setHint('Type comments for the issue')
 		.setFieldName('comments');
 
@@ -75,7 +70,7 @@ function onCalendarEventOpen(e: any, saved: boolean = false): GoogleAppsScript.C
 
 	const section = CardService.newCardSection()
 		.addWidget(issueIdWidget)
-		.addWidget(issueDateWidget)
+		// .addWidget(issueDateWidget)
 		.addWidget(issueHoursWidget)
 		.addWidget(issueCommentsWidget)
 		.addWidget(issueActivityWidget);
@@ -103,10 +98,10 @@ function onCalendarEventOpen(e: any, saved: boolean = false): GoogleAppsScript.C
 	}
 
 	const headerSection = CardService.newCardHeader()
-		.setTitle(`${isSaved ? 'This time entry is already saved on Redmine':'New Redmine time entry for:'}`)
-		.setSubtitle(eventTitle);
+		.setTitle(`${timeEntryId ? 'This time entry is already saved on Redmine':'New Redmine time entry for:'}`)
+		.setSubtitle(title);
 
-	const card = CardService.newCardBuilder()
+	const card = CardService.newCardBuilder().setName('onCalendarEventOpen')
 		.setHeader(headerSection)
 		.addSection(section);
 
@@ -126,40 +121,31 @@ interface ETimeEntry {
 }
 
 function saveEventOnRedmine(e: any) {
-	const SPENT_ON_FIELD = 'spent_on';
-	const form = e.formInputs;
+	const calendarEvent 	= getCalendarEvent(e.calendar);
+	const eventDate 		= calendarEvent.getStartTime();
+	const SPENT_ON_FIELD 	= 'spent_on';
+	const form 				= e.formInputs;
+	const data 				= {};
 	const formData:ETimeEntry = {};
-	const data = {};
+
+	form[SPENT_ON_FIELD] = [eventDate];
 
 	Object.keys(form).forEach((key) => {
 		const field = form[key];
 		let fieldValue = field[0];
 
 		if (key === SPENT_ON_FIELD) {
-			const date = new Date(fieldValue.msSinceEpoch);
-			const offset = date.getTimezoneOffset();
-			date.setMinutes(date.getMinutes() + offset);
-			const month = date.getMonth() + 1;
-			const day = date.getDate();
-			const paddedMonth 	= month.toString().padStart(2, '0');
-			const paddedday 	= day.toString().padStart(2, '0');
-
-			fieldValue = `${date.getFullYear()}-${paddedMonth}-${paddedday}`;
+			fieldValue = Utils.getDateForService(fieldValue);
 		}
 		formData[key] = fieldValue;
 		data[`time_entry[${key}]`] = fieldValue;
 	});
 
-	const timeEntryId 	= saveSpentTime(data);
+	const timeEntryId = redmineRequests.saveSpentTime(data);
 
 	if (timeEntryId) {
-		const calendarEvent = getCalendarEvent(e.calendar);
-
-		calendarEvent.setColor(SAVED_ON_REDMINE_COLOR);
-
-		const calendarTitle = calendarEvent.getTitle();
-		const activity 		= getActivityByValue(formData.activity_id);
-		calendarEvent.setTitle(`${SAVED_ON_REDMINE_TEXT}[${timeEntryId}]${calendarTitle}`);
+		EventUtils.markAsSaved(calendarEvent, timeEntryId);
+		const activity = getActivityByValue(formData.activity_id);
 		calendarEvent.setLocation(activity || '');
 
 		// Update event description if the user edited the feld before saving
@@ -167,7 +153,20 @@ function saveEventOnRedmine(e: any) {
 			calendarEvent.setDescription(formData.comments);
 		}
 
-		return onCalendarEventOpen(e, true);
+		const homeCard = onHomepage(e, User.getLastSelectedDate());
+		const actionResponse = CardService.newActionResponseBuilder()
+			.setNavigation(
+				CardService.newNavigation()
+					.popToRoot()
+					.updateCard(homeCard)
+			)
+			.setStateChanged(true)
+			.setNotification(
+				CardService.newNotification().setText('The time entry was saved!')
+			)
+			.build();
+
+		return actionResponse;
 	}
 
 	return CardService.newActionResponseBuilder()
