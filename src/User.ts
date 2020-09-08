@@ -1,22 +1,32 @@
 const REDMINE_API_URL           = 'https://rm.ewdev.ca';
 const LAST_SELECTED_DATE_KEY    = 'LAST_SELECTED_DATE';
 const REDMINE_CALENDAR_NAME 	= 'My Redmine';
+const RM_ACTIVITIES_KEY   	    = 'RM_ACTIVITIES';
 
 const User = {
     API_TOKEN  : 'api_token',
     API_URL    : 'api_url',
     getLastSelectedDate (): number {
-        const savedData = PropertiesService.getUserProperties().getProperty(LAST_SELECTED_DATE_KEY);
-        return Number(savedData);
+        try {
+            const savedData = PropertiesService.getUserProperties().getProperty(LAST_SELECTED_DATE_KEY);
+            return Number(savedData);
+        } catch (e) {}
+
+        return 0;
     },
     setLastSelectedDate (newDate) {
-        const dateToSave = typeof newDate === 'number' ? newDate.toString() : newDate;
-        PropertiesService.getUserProperties().setProperty(LAST_SELECTED_DATE_KEY, dateToSave);
+        try {
+            const dateToSave = typeof newDate === 'number' ? newDate.toString() : newDate;
+            PropertiesService.getUserProperties().setProperty(LAST_SELECTED_DATE_KEY, dateToSave);
+        } catch (e) {}
     },
 
     getRedmineApiUrl ():string  {
         const currentProperties = PropertiesService.getUserProperties();
-        const savedApiUrl = currentProperties.getProperty(this.API_URL);
+        let savedApiUrl;
+        try {
+            savedApiUrl = currentProperties.getProperty(this.API_URL);
+        } catch (e) {}
 
         if (savedApiUrl) {
             return savedApiUrl;
@@ -41,13 +51,14 @@ const User = {
         const currentProperties = PropertiesService.getUserProperties();
         const savedToken = currentProperties.getProperty(this.API_TOKEN);
 
-        if (encrypt) {
-            const stringToCrypt = `${savedToken}:${new Date().getTime()}`;
-            const encrypted     = Utilities.base64Encode(stringToCrypt);
-
-            return returnAsHeader ? `Basic ${encrypted}` : encrypted;
+        if (!encrypt) {
+            return savedToken;
         }
-        return savedToken;
+
+        const stringToCrypt = `${savedToken}:${new Date().getTime()}`;
+        const encrypted     = Utilities.base64Encode(stringToCrypt);
+
+        return returnAsHeader ? `Basic ${encrypted}` : encrypted;
     },
 
     _isEvolvingWebEmail ():boolean {
@@ -71,5 +82,30 @@ const User = {
         const calendar = calendars && calendars.length && calendars[0];
 
         return calendar;
+    },
+
+    /**
+     * Get the saved Redmine activities
+     */
+    getUserActivities ():IActivityResponse[] {
+        const currentProperties = PropertiesService.getUserProperties();
+        const activitiesString = currentProperties.getProperty(RM_ACTIVITIES_KEY) || '{}';
+
+        try {
+            const activities = JSON.parse(activitiesString);
+            return activities;
+        } catch (e){}
+    },
+
+    /**
+     * Save Redmine activities
+     */
+    setUserActivities (activities) {
+        const currentProperties = PropertiesService.getUserProperties();
+
+        try {
+            const activitiesString = JSON.stringify(activities);
+            currentProperties.setProperty(RM_ACTIVITIES_KEY, activitiesString);
+        } catch (e){}
     }
 };

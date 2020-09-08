@@ -171,7 +171,7 @@ function saveEventOnRedmine(e: any) {
 
 	return CardService.newActionResponseBuilder()
 		.setNotification(
-			CardService.newNotification().setText('There was an error trying to ave the time entry')
+			CardService.newNotification().setText('There was an error trying to save the time entry')
 		)
 		.build();
 }

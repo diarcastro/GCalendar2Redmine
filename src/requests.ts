@@ -85,7 +85,9 @@ class Redmine {
             try{
                 const body = fetchResponse.getContentText();
                 return JSON.parse(body);
-            } catch (e) {}
+            } catch (e) {
+                console.log('Error on Fetch', e);
+            }
         }
 
         return false;
@@ -93,14 +95,15 @@ class Redmine {
 
     private _getRequestHeaders (): GoogleAppsScript.URL_Fetch.HttpHeaders {
         const headers = {
-            Authorization: User.getRedmineApiToken(true, true),
+            'X-Redmine-API-Key': User.getRedmineApiToken(),
         };
 
         const isEvolvingWebEmail = User._isEvolvingWebEmail();
 
-        if (isEvolvingWebEmail) { // Cloudflare tokens
-            headers['CF-Access-Client-ID']      = CLIENT_ID;
-            headers['CF-Access-Client-Secret']  = CLIENT_SECRET;
+        if (isEvolvingWebEmail) { // Bypass Authorization
+            const authString = `${RM_USER}:${RM_PASSWORD}`;
+            const encodedString = Utilities.base64Encode(authString);
+            headers['Authorization'] = `Basic ${encodedString}`;
         }
 
         return headers;
