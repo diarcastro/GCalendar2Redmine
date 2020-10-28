@@ -92,16 +92,17 @@ const Utils = {
 	}
 }
 
-interface IEventTitle {
-	saved: boolean;
-	issueId: string;
-	title: string;
-	description: string;
-	hours: number;
-	timeEntryId: string;
-	activity: string;
-	activityId: number;
-	issueUrl?: string;
+interface IEventData {
+	saved		: boolean;
+	savedIcon	: boolean;
+	issueId		: string;
+	title		: string;
+	description	: string;
+	hours		: number;
+	timeEntryId	: string;
+	activity	: string;
+	activityId	: number;
+	issueUrl?	: string;
 }
 
 const SAVED_ON_REDMINE_COLOR	= '8'; // Gray from https://developers.google.com/apps-script/reference/calendar/event-color
@@ -110,7 +111,7 @@ const SAVED_ON_REDMINE_TEXT 	= '✅';
 
 const EventUtils 	= {
 
-	parseEvent (event: GoogleAppsScript.Calendar.CalendarEvent): IEventTitle {
+	parseEvent (event: GoogleAppsScript.Calendar.CalendarEvent): IEventData {
 		if(!event) {
 			return;
 		}
@@ -124,7 +125,7 @@ const EventUtils 	= {
 		const matches 			= regexp.exec(eventTitle) as any;
 		const issueId 			= matches?.groups?.issue || '';
 		const title 			= matches?.groups?.title || '';
-		// const saved 			= matches?.groups?.saved || false;
+		const savedIcon 		= matches?.groups?.saved ? true :  false;
 		const description		= eventDescription || title;
 		const hours 			= timeDiff(eventStartTime, eventEndTime) || DEFAULT_HOURS;
 		const timeEntryId 		= event.getTag(TAGS.TIME_ENTRY_ID) || null;
@@ -134,6 +135,7 @@ const EventUtils 	= {
 
 		return {
 			saved : timeEntryId ? true : false,
+			savedIcon,
 			issueId,
 			title,
 			description,
@@ -147,7 +149,10 @@ const EventUtils 	= {
 
 	markAsSaved (event: GoogleAppsScript.Calendar.CalendarEvent, timeEntryId: string): GoogleAppsScript.Calendar.CalendarEvent {
 		const calendarTitle = event.getTitle();
-		event.setTitle(`${SAVED_ON_REDMINE_TEXT}${calendarTitle}`);
+		const { savedIcon } = EventUtils.parseEvent(event);
+		if (!savedIcon) {
+			event.setTitle(`${SAVED_ON_REDMINE_TEXT}${calendarTitle}`);
+		}
 		event.setTag(TAGS.TIME_ENTRY_ID, timeEntryId);
 
 		return event;

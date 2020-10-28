@@ -64,6 +64,8 @@ function onHomepage(e: any, timestamp: number = null): GoogleAppsScript.Card_Ser
 
 	if(calendarEvents && calendarEvents.length) {
 		calendarEvents.forEach((event) => {
+			/* Debug purposes */
+			event.setTag(TAGS.TIME_ENTRY_ID, '');
 			const eventData = EventUtils.parseEvent(event);
 			const {
 				saved,
@@ -158,7 +160,7 @@ function onChangeDate (eventData) {
 
 function saveEventsOnRedmine (event) {
 	// console.log('saveEventsOnRedmine', event);
-	let responseMessage = 'entries were saved on Redmine';
+	let responseMessage = '';
 	const {formInputs : {
 		eventsOnDate
 	}} = event;
@@ -200,7 +202,18 @@ function saveEventsOnRedmine (event) {
 				});
 
 				const timeEntries = redmineRequests.saveSpentTimeBatch(dataToSave);
-				responseMessage = `${timeEntries.length} ${responseMessage}`;
+				const realSavedEntries = timeEntries.reduce((acc, current) => acc + (current ? 1: 0), 0); // Sum the saved time entries
+				const pluralString = realSavedEntries > 1 ? 'entries were' : 'entry was';
+				responseMessage = `${realSavedEntries} ${pluralString} saved on Redmine.`;
+
+				if (realSavedEntries !== timeEntries.length) {
+					const timeEntriesDifference = timeEntries.length - realSavedEntries;
+					const pluralString = timeEntriesDifference > 1 ? 'entries' : 'entry';
+					responseMessage += `
+NOTICE: ${timeEntriesDifference} ${pluralString} couldn't be saved!
+Please check if the id is correct.`;
+				}
+
 				eventsToSave.forEach((event, index) => {
 					const timeEntry = timeEntries[index];
 
@@ -220,7 +233,7 @@ function saveEventsOnRedmine (event) {
 				});
 			}
 		}
-	}catch(e) {
+	} catch(e) {
 		Logger.log('Error saveEventsOnRedmine');
 		Logger.log(e);
 		responseMessage = 'Some time entries were not saved. Please try again!';

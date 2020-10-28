@@ -25,7 +25,31 @@ class Redmine {
 
     saveSpentTimeBatch (data: GoogleAppsScript.URL_Fetch.Payload[]): string[] {
         const timeEntries = [];
-        const requests = data.map((timeEntryData) => {
+
+        data.forEach((timeEntryData) => {
+            // const headers = this._getRequestHeaders();
+            // const requestUrl = `${this._apiUrl}/${this.TIME_ENTRIES}`;
+            // const request = {
+            //     url: requestUrl,
+            //     headers,
+            //     method: 'post',
+            //     payload: timeEntryData
+            // };
+
+            const response = this._fetch(this.TIME_ENTRIES, timeEntryData, 'post');
+            const id = response?.time_entry?.id || 0;
+            timeEntries.push(id);
+            // if (response) {
+            //     const { time_entry: { id = null } = {}} =  response;
+            //     timeEntries.push(id);
+            // } else {
+            //     timeEntries.push(0);
+            // }
+
+            // return request as GoogleAppsScript.URL_Fetch.URLFetchRequest;
+        });
+
+        /* const requests = data.map((timeEntryData) => {
             const headers = this._getRequestHeaders();
             const requestUrl = `${this._apiUrl}/${this.TIME_ENTRIES}`;
             const request = {
@@ -55,7 +79,7 @@ class Redmine {
                     return null;
                 });
             }
-        }
+        } */
 
         return timeEntries;
     }
@@ -77,17 +101,17 @@ class Redmine {
             payload,
         };
 
-        const requestUrl    = `${this._apiUrl}/${action}`;
-        const fetchResponse = UrlFetchApp.fetch(requestUrl, requestOptions);
-        const responseCode  = fetchResponse.getResponseCode();
+        try {
+            const requestUrl    = `${this._apiUrl}/${action}`;
+            const fetchResponse = UrlFetchApp.fetch(requestUrl, requestOptions);
+            const responseCode  = fetchResponse.getResponseCode();
 
-        if (responseCode === HTTP_RESPONSE_CREATED) {
-            try{
+            if (responseCode === HTTP_RESPONSE_CREATED) {
                 const body = fetchResponse.getContentText();
                 return JSON.parse(body);
-            } catch (e) {
-                console.log('Error on Fetch', e);
             }
+        } catch (e) {
+            console.log('Request Error', e);
         }
 
         return false;
