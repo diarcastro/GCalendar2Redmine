@@ -130,7 +130,7 @@ const EventUtils 	= {
 		const hours 			= timeDiff(eventStartTime, eventEndTime) || DEFAULT_HOURS;
 		const timeEntryId 		= event.getTag(TAGS.TIME_ENTRY_ID) || null;
 
-		const apiUrl			= User.getRedmineApiUrl();
+		const apiUrl			= User.getApiUrl();
 		const issueUrl			= `${apiUrl}/issues/${issueId}`;
 
 		return {

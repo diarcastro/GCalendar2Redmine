@@ -1,15 +1,15 @@
 const HTTP_RESPONSE_CREATED = 201;
+const HTTP_RESPONSE_OK      = 200;
 
 
 class Redmine {
-    public readonly HTTP_RESPONSE_CREATED = 201;
     public readonly TIME_ENTRIES = 'time_entries.json';
     public readonly TIME_ENTRY_ACTIVITIES = 'enumerations/time_entry_activities.json';
 
     private _apiUrl = '';
 
     constructor () {
-        this._apiUrl = User.getRedmineApiUrl();
+        this._apiUrl = User.getApiUrl();
     }
 
     saveSpentTime (params: GoogleAppsScript.URL_Fetch.Payload): string {
@@ -27,68 +27,17 @@ class Redmine {
         const timeEntries = [];
 
         data.forEach((timeEntryData) => {
-            // const headers = this._getRequestHeaders();
-            // const requestUrl = `${this._apiUrl}/${this.TIME_ENTRIES}`;
-            // const request = {
-            //     url: requestUrl,
-            //     headers,
-            //     method: 'post',
-            //     payload: timeEntryData
-            // };
-
             const response = this._fetch(this.TIME_ENTRIES, timeEntryData, 'post');
             const id = response?.time_entry?.id || 0;
             timeEntries.push(id);
-            // if (response) {
-            //     const { time_entry: { id = null } = {}} =  response;
-            //     timeEntries.push(id);
-            // } else {
-            //     timeEntries.push(0);
-            // }
-
-            // return request as GoogleAppsScript.URL_Fetch.URLFetchRequest;
         });
-
-        /* const requests = data.map((timeEntryData) => {
-            const headers = this._getRequestHeaders();
-            const requestUrl = `${this._apiUrl}/${this.TIME_ENTRIES}`;
-            const request = {
-                url: requestUrl,
-                headers,
-                method: 'post',
-                payload: timeEntryData
-            }
-
-            return request as GoogleAppsScript.URL_Fetch.URLFetchRequest;
-        });
-
-        if (requests && requests.length) {
-            const responses = UrlFetchApp.fetchAll(requests);
-            if (responses && responses.length) {
-                return responses.map(response => {
-                    const responseCode = response.getResponseCode();
-                    if (responseCode === HTTP_RESPONSE_CREATED) {
-                        try {
-                            const body      = response.getContentText();
-                            const jsonData  = JSON.parse(body);
-                            const { time_entry: { id = null } = {}} =  jsonData;
-
-                            return id;
-                        } catch (e) {}
-                    }
-                    return null;
-                });
-            }
-        } */
 
         return timeEntries;
     }
 
     getActivities (): IActivityResponse[] {
         const response = this._fetch(this.TIME_ENTRY_ACTIVITIES, {});
-        const {
-            time_entry_activities: activities = []
-        } = response;
+        const activities = response?.time_entry_activities || null;
 
         return activities;
     }
@@ -105,10 +54,13 @@ class Redmine {
             const requestUrl    = `${this._apiUrl}/${action}`;
             const fetchResponse = UrlFetchApp.fetch(requestUrl, requestOptions);
             const responseCode  = fetchResponse.getResponseCode();
+            console.log('request', requestUrl);
 
-            if (responseCode === HTTP_RESPONSE_CREATED) {
+            if (responseCode === HTTP_RESPONSE_OK || responseCode === HTTP_RESPONSE_CREATED) {
                 const body = fetchResponse.getContentText();
                 return JSON.parse(body);
+            } else {
+                console.log('response Error', fetchResponse.getContentText());
             }
         } catch (e) {
             console.log('Request Error', e);
@@ -119,7 +71,7 @@ class Redmine {
 
     private _getRequestHeaders (): GoogleAppsScript.URL_Fetch.HttpHeaders {
         const headers = {
-            'X-Redmine-API-Key': User.getRedmineApiToken(),
+            'X-Redmine-API-Key': User.getApiToken(),
         };
 
         const isEvolvingWebEmail = User._isEvolvingWebEmail();

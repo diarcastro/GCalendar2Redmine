@@ -6,15 +6,17 @@
 function onHomepage(e: any, timestamp: number = null): GoogleAppsScript.Card_Service.Card {
 	// console.log('onHomepage event', e, timestamp, User.getLastSelectedDate());
 
-	const hasConfiguration = User.getRedmineApiUrl();
+	const hasConfiguration	= User.getApiUrl();
+	const calendarName 	   	= User.getCalendarName();
+
 	if(!hasConfiguration) {
 		return onConfiguration();
 	}
 
-	const calendars = CalendarApp.getCalendarsByName(REDMINE_CALENDAR_NAME);
+	const calendars = CalendarApp.getCalendarsByName(calendarName);
 	const [ calendar ] = calendars;
 	if (!calendar) {
-		return createTextCard(`Please be sure you have a calendar named ${REDMINE_CALENDAR_NAME}`);
+		return createTextCard(`Please be sure you have a calendar named ${calendarName}`);
 
 	}
 
@@ -64,8 +66,6 @@ function onHomepage(e: any, timestamp: number = null): GoogleAppsScript.Card_Ser
 
 	if(calendarEvents && calendarEvents.length) {
 		calendarEvents.forEach((event) => {
-			/* Debug purposes */
-			event.setTag(TAGS.TIME_ENTRY_ID, '');
 			const eventData = EventUtils.parseEvent(event);
 			const {
 				saved,

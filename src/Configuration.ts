@@ -1,23 +1,24 @@
 function onConfiguration () {
-	const savedToken            = User.getRedmineApiToken();
-	const savedApiUrl			= User.getRedmineApiUrl();
+	const savedToken	= User.getApiToken();
+	const savedApiUrl	= User.getApiUrl();
+
 	const redmineTokenWidget    = CardService.newTextInput()
 		.setTitle('Redmine User API access key')
-		.setValue(savedToken || '')
+		.setValue(savedToken)
 		.setHint('This token should be in the Redmine user account section. e.g. https://myredmine.com/my/api_key')
-		.setFieldName(User.API_TOKEN);
+		.setFieldName(EUserProperty.API_TOKEN);
 
 	const redmineApiUrlWidget    = CardService.newTextInput()
 		.setTitle('Redmine API Server URL')
-		.setValue(savedApiUrl || '')
+		.setValue(savedApiUrl)
 		.setHint('e.g. https://my.redmine.com')
-		.setFieldName(User.API_URL);
+		.setFieldName(EUserProperty.API_URL);
 
 	const onSaveUserConfigAction = CardService.newAction()
-		.setMethodName('onSaveUserConfig');
+		.setFunctionName('onSaveUserConfig');
 
 	const saveUserConfigWIdget = CardService.newTextButton()
-		.setText('Save')
+		.setText('Save Configuration')
 		.setTextButtonStyle(CardService.TextButtonStyle.FILLED)
 		.setOnClickAction(onSaveUserConfigAction);
 
@@ -28,27 +29,82 @@ function onConfiguration () {
 		.addWidget(redmineApiUrlWidget)
 		;
 
-	apiSection.addWidget(saveUserConfigWIdget);
+	const defaultCalendarName 	= User.getCalendarName();
+	const calendarNameWidget	= CardService.newTextInput()
+		.setTitle('Calendar Name')
+		.setValue(defaultCalendarName)
+		.setHint('Where your Redmine event will be located?')
+		.setFieldName(EUserProperty.CALENDAR_NAME);
 
-	const card = CardService.newCardBuilder().addSection(apiSection);
+	const defaulOptionsSection = CardService
+			.newCardSection()
+			.setHeader('Default Options')
+			.addWidget(calendarNameWidget);
 
+	const serverActivities = redmineRequests.getActivities();
+	if(serverActivities && serverActivities.length) {
+		const userActivities = [];
+
+		const defaultActivity 	= User.getDefaultActivity();
+		const activitiesWidget 	= CardService.newSelectionInput()
+			.setTitle('Default activity')
+			.setFieldName(EUserProperty.DEFAULT_ACTIVITY)
+			.setType(CardService.SelectionInputType.DROPDOWN);
+
+		serverActivities.forEach(activity => {
+			if (activity.active) {
+				userActivities.push({id: activity.id, name: activity.name});
+				let active = false;
+				if (defaultActivity) {
+					active = activity.id === Number(defaultActivity);
+				} else {
+					active = activity.is_default;
+				}
+				activitiesWidget.addItem(activity.name, activity.id, active);
+			}
+		});
+
+		User.setUserActivities(userActivities);
+
+		defaulOptionsSection.addWidget(activitiesWidget);
+	}
+
+
+	const footerSection = CardService.newFixedFooter().setPrimaryButton(saveUserConfigWIdget);
+	const card = CardService
+		.newCardBuilder()
+		.setName('Configuration')
+		.addSection(apiSection)
+		.addSection(defaulOptionsSection);
+	// @ts-ignore // there is no documentation for the next method
+	card.setFixedFooter(footerSection);
 	return card.build();
 }
 
 function onSaveUserConfig (e: any) {
-	const apiToken = e.formInput[User.API_TOKEN] || '';
-	const apiUrl = e.formInput[User.API_URL] || '';
-	const isValidUrl = Utils.isURL(apiUrl);
-	let errorMessage = '';
-	let errorState = false;
+	// console.log('onSaveUserConfig', e);
+	const apiToken 			= e.formInput[EUserProperty.API_TOKEN] || '';
+	const apiUrl 			= e.formInput[EUserProperty.API_URL] || '';
+	const defaultActivity 	= e.formInput[EUserProperty.DEFAULT_ACTIVITY] || '';
+	const calendarName 		= e.formInput[EUserProperty.CALENDAR_NAME] || '';
+	const isValidUrl 		= Utils.isURL(apiUrl);
+	let errorMessage 		= '';
+	let errorState 			= false;
 
-	const currentProperties = PropertiesService.getUserProperties();
-	currentProperties.setProperty(User.API_TOKEN, apiToken);
+	User.setProperty(EUserProperty.API_TOKEN, apiToken);
+
+	if(defaultActivity) {
+		User.setProperty(EUserProperty.DEFAULT_ACTIVITY, defaultActivity);
+	}
+
+	if(calendarName) {
+		User.setProperty(EUserProperty.CALENDAR_NAME, calendarName);
+	}
 
 	if (isValidUrl) {
-		currentProperties.setProperty(User.API_URL, apiUrl);
+		User.setProperty(EUserProperty.API_URL, apiUrl);
 	} else {
-		currentProperties.setProperty(User.API_URL, '');
+		User.setProperty(EUserProperty.API_URL, '');
 		errorState = true;
 		errorMessage = 'but, Redmine API Server URL is not a valid URL. Please fix it.';
 	}
@@ -57,16 +113,14 @@ function onSaveUserConfig (e: any) {
 	const actionResponse = CardService.newActionResponseBuilder();
 
 	if (!errorState) {
-		const homeCard = onHomepage(e);
+		const updatedCard = onConfiguration();
 		const navigation =  CardService.newNavigation()
-			.popToRoot()
-			.pushCard(homeCard);
+			.updateCard(updatedCard);
 		actionResponse.setNavigation(navigation);
 	}
 	return actionResponse
 	    .setNotification(
-			CardService.newNotification()
-			.setText(message)
+			CardService.newNotification().setText(message)
 		)
 		.setStateChanged(true)
 	    .build();

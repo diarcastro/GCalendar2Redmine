@@ -19,7 +19,7 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 	const calendar 		= CalendarApp.getCalendarById(e?.calendar?.calendarId);
 	const calendarName 	= calendar?.getName();
 
-	if (calendarName !== REDMINE_CALENDAR_NAME) {
+	if (calendarName !== User.getCalendarName()) {
 		return createTextCard(ERRORS.REDMINE_CALENDAR);
 	}
 
@@ -63,10 +63,17 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 		.setType(CardService.SelectionInputType.DROPDOWN)
 		.setFieldName('activity_id');
 
-	Object.keys(ACTIVITIES).forEach((key: string) => {
-		const activity = ACTIVITIES[key];
-		issueActivityWidget.addItem(key, activity, key === eventActivity);
-	});
+	const activities = User.getUserActivities();
+	const defaultActivity = User.getDefaultActivity();
+	activities.forEach(activity => {
+		const active = defaultActivity ? activity.id === Number(defaultActivity) : activity.name === eventActivity;
+		issueActivityWidget.addItem(activity.name, activity.id, active);
+	})
+
+	// Object.keys(ACTIVITIES).forEach((key: string) => {
+	// 	const activity = ACTIVITIES[key];
+	// 	issueActivityWidget.addItem(key, activity, key === eventActivity);
+	// });
 
 	const section = CardService.newCardSection()
 		.addWidget(issueIdWidget)
@@ -78,12 +85,13 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 	const footerSection = CardService.newFixedFooter();
 
 	if (timeEntryId) {
-		const visitTimeEntryWidget = CardService.newTextButton()
+		const apiUrl 				= User.getApiUrl();
+		const visitTimeEntryWidget 	= CardService.newTextButton()
 			.setText('See on Redmine')
 			.setTextButtonStyle(CardService.TextButtonStyle.TEXT)
 			.setOpenLink(
 				CardService.newOpenLink()
-					.setUrl(`${REDMINE_API_URL}/time_entries/${timeEntryId}/edit`)
+					.setUrl(`${apiUrl}/time_entries/${timeEntryId}/edit`)
 			);
 
 		section.addWidget(visitTimeEntryWidget);
