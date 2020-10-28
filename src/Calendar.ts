@@ -28,9 +28,6 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 		return createTextCard(ERRORS.NO_EVENT_CREATED);
 	}
 
-	/* @Remove: DEBUG PURPOSES */
-	// event.setTag(TAGS.TIME_ENTRY_ID, '');
-
 	const eventData = EventUtils.parseEvent(event);
 	const {
 		issueId,
@@ -57,7 +54,7 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 		.setHint('Type comments for the issue')
 		.setFieldName('comments');
 
-	const eventActivity = event.getLocation() || DEVELOPMENT_ACTIVITY;
+	const eventActivity = event.getLocation();
 	const issueActivityWidget = CardService.newSelectionInput()
 		.setTitle('Activity')
 		.setType(CardService.SelectionInputType.DROPDOWN)
@@ -66,14 +63,9 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 	const activities = User.getUserActivities();
 	const defaultActivity = User.getDefaultActivity();
 	activities.forEach(activity => {
-		const active = defaultActivity ? activity.id === Number(defaultActivity) : activity.name === eventActivity;
+		const active = eventActivity ? activity.name === eventActivity : activity.id === Number(defaultActivity);
 		issueActivityWidget.addItem(activity.name, activity.id, active);
-	})
-
-	// Object.keys(ACTIVITIES).forEach((key: string) => {
-	// 	const activity = ACTIVITIES[key];
-	// 	issueActivityWidget.addItem(key, activity, key === eventActivity);
-	// });
+	});
 
 	const section = CardService.newCardSection()
 		.addWidget(issueIdWidget)
@@ -153,7 +145,7 @@ function saveEventOnRedmine(e: any) {
 
 	if (timeEntryId) {
 		EventUtils.markAsSaved(calendarEvent, timeEntryId);
-		const activity = getActivityByValue(formData.activity_id);
+		const activity = getActivityName(formData.activity_id);
 		calendarEvent.setLocation(activity || '');
 
 		// Update event description if the user edited the feld before saving
@@ -161,6 +153,7 @@ function saveEventOnRedmine(e: any) {
 			calendarEvent.setDescription(formData.comments);
 		}
 
+		EventUtils.markAsSaved(calendarEvent, timeEntryId);
 		const homeCard = onHomepage(e, User.getLastSelectedDate());
 		const actionResponse = CardService.newActionResponseBuilder()
 			.setNavigation(

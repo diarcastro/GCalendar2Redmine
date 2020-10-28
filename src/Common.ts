@@ -176,9 +176,8 @@ function saveEventsOnRedmine (event) {
 
 		if (calendarEvents) {
 			const eventsToSave = calendarEvents && calendarEvents.filter(event => {
-				const eventData = EventUtils.parseEvent(event);
-				const { issueId } = eventData;
-				return issueId;
+				const { issueId, timeEntryId } = EventUtils.parseEvent(event);
+				return issueId && !timeEntryId;
 			}) || [];
 
 			if (eventsToSave && eventsToSave.length) {
@@ -201,10 +200,10 @@ function saveEventsOnRedmine (event) {
 					return data;
 				});
 
-				const timeEntries = redmineRequests.saveSpentTimeBatch(dataToSave);
-				const realSavedEntries = timeEntries.reduce((acc, current) => acc + (current ? 1: 0), 0); // Sum the saved time entries
-				const pluralString = realSavedEntries > 1 ? 'entries were' : 'entry was';
-				responseMessage = `${realSavedEntries} ${pluralString} saved on Redmine.`;
+				const timeEntries 		= redmineRequests.saveSpentTimeBatch(dataToSave);
+				const realSavedEntries 	= timeEntries.reduce((acc, current) => acc + (current ? 1: 0), 0); // Sum the saved time entries
+				const pluralString 		= realSavedEntries > 1 ? 'entries were' : 'entry was';
+				responseMessage 		= `${realSavedEntries} ${pluralString} saved on Redmine.`;
 
 				if (realSavedEntries !== timeEntries.length) {
 					const timeEntriesDifference = timeEntries.length - realSavedEntries;

@@ -117,8 +117,9 @@ const User = {
         return this._getProperty(EUserProperty.CALENDAR_NAME, DEFAULT_CALENDAR_NAME);
     },
 
-    getDefaultActivity():string {
-        return this._getProperty(EUserProperty.DEFAULT_ACTIVITY);
+    getDefaultActivity():number {
+        const defaultActivity = this._getProperty(EUserProperty.DEFAULT_ACTIVITY, 0);
+        return Number(defaultActivity);
     },
 
     _getProperty(propertyName: string, defaultValue:any = null): string | any {
