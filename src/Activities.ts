@@ -1,11 +1,3 @@
-// @TODO: Get the activities from service
-interface IActivityResponse {
-    id: number;
-    name: string;
-    is_default: boolean;
-    active: boolean;
-}
-
 /**
  * Get the activity name based on its id
  */

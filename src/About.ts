@@ -1,3 +1,6 @@
+/**
+ * Shows about card
+ */
 function onAbout() {
     const openEWSiteLink = CardService.newOpenLink().setUrl('https://evolvingweb.ca/?ref=GCalendar2Redmine');
 	const textWidget = CardService.newTextParagraph().setText('This is an Add-on created by: ');

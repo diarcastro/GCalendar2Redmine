@@ -1,3 +1,11 @@
+const enum TAGS {
+    TIME_ENTRY_ID = 'TIME_ENTRY_ID',
+};
+
+const SAVED_ON_REDMINE_COLOR	= '8'; // Gray from https://developers.google.com/apps-script/reference/calendar/event-color
+const DEFAULT_HOURS 			= 0.5;
+const SAVED_ON_REDMINE_TEXT 	= '✅';
+
 /**
  * Create a default card with a text
  *
@@ -50,9 +58,9 @@ function timeDiff(
 }
 const Utils = {
 
-	getDateWithOffset (dateInitialized: GoogleAppsScript.Base.Date | Date  = null, offset: string = null): GoogleAppsScript.Base.Date | Date {
+	getDateWithOffset (dateInitialized: GoogleAppsScript.Base.Date | Date  = null, offset: string | number = null): GoogleAppsScript.Base.Date | Date {
 		const date = dateInitialized ||  new Date();
-		const offsetNumber = parseInt(offset);
+		const offsetNumber = Number(offset);
 		const ofssetMinutes = offsetNumber ? offsetNumber / 1000 / 60 : false;
 		const newOffset = ofssetMinutes || date.getTimezoneOffset();
 
@@ -92,22 +100,9 @@ const Utils = {
 	}
 }
 
-interface IEventData {
-	saved		: boolean;
-	savedIcon	: boolean;
-	issueId		: string;
-	title		: string;
-	description	: string;
-	hours		: number;
-	timeEntryId	: string;
-	activity	: string;
-	activityId	: number;
-	issueUrl?	: string;
-}
 
-const SAVED_ON_REDMINE_COLOR	= '8'; // Gray from https://developers.google.com/apps-script/reference/calendar/event-color
-const DEFAULT_HOURS 			= 0.5;
-const SAVED_ON_REDMINE_TEXT 	= '✅';
+
+
 
 const EventUtils 	= {
 

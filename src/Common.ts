@@ -1,14 +1,14 @@
 /**
  * Homepage card
+ * Shows all the events that can be saved on Redmine
  *
  * @return The card to show to the user.
  */
-function onHomepage(e: any, timestamp: number = null): GoogleAppsScript.Card_Service.Card {
-	// console.log('onHomepage event', e, timestamp, User.getLastSelectedDate());
-
+function onHomepage(e: IHomepageTriggerEvent, timestamp: number = null): GoogleAppsScript.Card_Service.Card {
 	const hasConfiguration	= User.getApiUrl();
 	const calendarName 	   	= User.getCalendarName();
 
+	/* If there is no configuration sabed before it shows the configuration page */
 	if(!hasConfiguration) {
 		return onConfiguration();
 	}
@@ -17,10 +17,9 @@ function onHomepage(e: any, timestamp: number = null): GoogleAppsScript.Card_Ser
 	const [ calendar ] = calendars;
 	if (!calendar) {
 		return createTextCard(`Please be sure you have a calendar named ${calendarName}`);
-
 	}
 
-	const { userTimezone : { offSet = 0 } = {} } = e;
+	const offSet = e?.userTimezone?.offSet;
 
 	const eventsData = {
 		forSaving: {
@@ -145,11 +144,13 @@ function onHomepage(e: any, timestamp: number = null): GoogleAppsScript.Card_Ser
 
 	return card.build();
 }
-
-function onChangeDate (eventData) {
-	const {formInputs : {
-		eventsOnDate
-	}} = eventData
+/**
+ * Reload the current page in order to shows the events for the new selected date
+ *
+ * @param eventData
+ */
+function onChangeDate (eventData: IOnChangeDateEvent): GoogleAppsScript.Card_Service.Card {
+	const { formInputs : { eventsOnDate =[] } = {} } = eventData;
 
 	const date = eventsOnDate && eventsOnDate.length && eventsOnDate[0];
 	const timestamp	= date && date.msSinceEpoch;
@@ -157,13 +158,14 @@ function onChangeDate (eventData) {
 	const commonCard = onHomepage(eventData, timestamp);
 	return CardService.newNavigation().updateCard(commonCard);
 }
-
-function saveEventsOnRedmine (event) {
-	// console.log('saveEventsOnRedmine', event);
+/**
+ * Save all the events in the selected date on Redmine
+ *
+ * @param event Google form
+ */
+function saveEventsOnRedmine (event:ISaveEventOnRedmineEvent): GoogleAppsScript.Card_Service.Card {
 	let responseMessage = '';
-	const {formInputs : {
-		eventsOnDate
-	}} = event;
+	const { formInputs : { eventsOnDate =[] } = {} } = event;
 
 	const date = eventsOnDate && eventsOnDate.length && eventsOnDate[0];
 	const timestamp	= date && date.msSinceEpoch;
@@ -239,13 +241,11 @@ Please check if the id is correct.`;
 	}
 
 	const homeCard = onHomepage(event, timestamp);
-	// const eventCard = onCalendarEventOpen(e);
 	const actionResponse = CardService.newActionResponseBuilder()
 		.setNavigation(
 			CardService.newNavigation()
 				.popToRoot()
 				.updateCard(homeCard)
-				// .updateCard(calendarEventCard)
 		)
 		.setStateChanged(true)
 		.setNotification(

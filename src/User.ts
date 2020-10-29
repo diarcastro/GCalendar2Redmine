@@ -80,7 +80,7 @@ const User = {
     /**
      * Get the saved Redmine activities
      */
-    getUserActivities ():IActivityResponse[] {
+    getUserActivities (): IActivityResponse[] {
         const activitiesString = this._getProperty(EUserProperty.ACTIVITIES, '{}');
 
         try {

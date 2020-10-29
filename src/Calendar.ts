@@ -9,13 +9,13 @@ const enum ERRORS {
 
 /**
  * Shows the new time entry Redmine form
+ * This is triggered when a user selects an event in the calendar
+ * In this card we could save the current event to Redmine and also we could visit saved time logs on Redmine
  *
  * @param The event object.
  * @return The card to show to the user.
  */
-function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
-	console.log('onCalendarEventOpen', e, 'lastSelectedDate', User.getLastSelectedDate());
-
+function onCalendarEventOpen(e: IEventOpenTriggerEvent): GoogleAppsScript.Card_Service.Card {
 	const calendar 		= CalendarApp.getCalendarById(e?.calendar?.calendarId);
 	const calendarName 	= calendar?.getName();
 
@@ -38,10 +38,6 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 	} = eventData;
 
 	const issueIdWidget 	= CardService.newTextInput().setTitle('Issue ID').setValue(issueId).setFieldName('issue_id');
-	// const issueDateWidget 	= CardService.newDatePicker()
-	// 	.setTitle('Issue Date')
-	// 	.setValueInMsSinceEpoch(eventStartTime.getTime())
-	// 	.setFieldName('spent_on');
 	const issueHoursWidget 	= CardService.newTextInput()
 		.setValue(hours.toString())
 		.setTitle('Hours')
@@ -69,7 +65,6 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 
 	const section = CardService.newCardSection()
 		.addWidget(issueIdWidget)
-		// .addWidget(issueDateWidget)
 		.addWidget(issueHoursWidget)
 		.addWidget(issueCommentsWidget)
 		.addWidget(issueActivityWidget);
@@ -112,15 +107,12 @@ function onCalendarEventOpen(e: any): GoogleAppsScript.Card_Service.Card {
 	return card.build();
 }
 
-interface ETimeEntry {
-	issue_id?	: string;
-	spent_on?	: string;
-	hours?		: string;
-	comments?	: string;
-	activity_id?: string;
-}
-
-function saveEventOnRedmine(e: any) {
+/**
+ * Save the current event on Redmine
+ *
+ * @param e Current form data
+ */
+function saveEventOnRedmine(e: ISaveEventOnRedmineEvent) {
 	const calendarEvent 	= getCalendarEvent(e.calendar);
 	const eventDate 		= calendarEvent.getStartTime();
 	const SPENT_ON_FIELD 	= 'spent_on';
@@ -148,7 +140,7 @@ function saveEventOnRedmine(e: any) {
 		const activity = getActivityName(formData.activity_id);
 		calendarEvent.setLocation(activity || '');
 
-		// Update event description if the user edited the feld before saving
+		/* Update event description if the user edited the feld before saving */
 		if (calendarEvent.getTitle() !== formData.comments && calendarEvent.getDescription() !== formData.comments) {
 			calendarEvent.setDescription(formData.comments);
 		}
@@ -183,7 +175,7 @@ function saveEventOnRedmine(e: any) {
  * @param event event or calendar data
  * @returns Calendar event
  */
-function getCalendarEvent(calendarData: any): GoogleAppsScript.Calendar.CalendarEvent {
+function getCalendarEvent(calendarData: IBaseEventCalendar): GoogleAppsScript.Calendar.CalendarEvent {
 	const calendarId = calendarData && calendarData.calendarId;
 	const calendar = CalendarApp.getCalendarById(calendarId);
 	const eventId = calendarData && calendarData.id;

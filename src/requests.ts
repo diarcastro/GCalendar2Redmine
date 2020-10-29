@@ -76,7 +76,7 @@ class Redmine {
 
         const isEvolvingWebEmail = User._isEvolvingWebEmail();
 
-        if (isEvolvingWebEmail) { // Bypass Authorization
+        if (isEvolvingWebEmail) { // Bypass Authorization for EvolvingWeb Useres
             const authString = `${RM_USER}:${RM_PASSWORD}`;
             const encodedString = Utilities.base64Encode(authString);
             headers['Authorization'] = `Basic ${encodedString}`;

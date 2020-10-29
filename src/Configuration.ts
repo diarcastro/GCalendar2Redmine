@@ -81,8 +81,7 @@ function onConfiguration () {
 	return card.build();
 }
 
-function onSaveUserConfig (e: any) {
-	// console.log('onSaveUserConfig', e);
+function onSaveUserConfig (e: IOnSaveUserConfigEvent) {
 	const apiToken 			= e.formInput[EUserProperty.API_TOKEN] || '';
 	const apiUrl 			= e.formInput[EUserProperty.API_URL] || '';
 	const defaultActivity 	= e.formInput[EUserProperty.DEFAULT_ACTIVITY] || '';
