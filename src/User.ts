@@ -3,11 +3,12 @@ const DEFAULT_CALENDAR_NAME = 'My Redmine';
 
 enum EUserProperty {
     ACTIVITIES              = 'activities',
-    LAST_SELECTED_DATE_KEY  = 'last_selected_date',
-    CALENDAR_NAME           = 'calendar_name',
     API_TOKEN               = 'api_token',
     API_URL                 = 'api_url',
+    CALENDAR_NAME           = 'calendar_name',
     DEFAULT_ACTIVITY        = 'default_activity',
+    LAST_SELECTED_DATE_KEY  = 'last_selected_date',
+    OVERWRITE_TITLE         = 'overwrite_title', /* Redmine time comment will be the event description or just the title */
 };
 
 const User = {
@@ -24,6 +25,29 @@ const User = {
         try {
             const dateToSave = typeof newDate === 'number' ? newDate.toString() : newDate;
             this.setProperty(EUserProperty.LAST_SELECTED_DATE_KEY, dateToSave);
+        } catch (e) {}
+    },
+
+    /**
+     * Should overwrite the event title with the event description for use it as Redmine time comment?
+     */
+    getOverwriteTitle (): boolean {
+        try {
+            const savedData = this._getProperty(EUserProperty.OVERWRITE_TITLE);
+            return savedData !== null ? Boolean(Number(savedData)) : true;
+        } catch (e) {}
+
+        return true;
+    },
+
+    /**
+     * Save user configuration
+     *
+     * @param value
+     */
+    setOverwriteTitle (value: string) {
+        try {
+            this.setProperty(EUserProperty.OVERWRITE_TITLE, value);
         } catch (e) {}
     },
 

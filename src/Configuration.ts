@@ -69,6 +69,17 @@ function onConfiguration () {
 		defaulOptionsSection.addWidget(activitiesWidget);
 	}
 
+	const overwriteTitle 		= User.getOverwriteTitle();
+	console.log('overwriteTitle', overwriteTitle);
+	const overwriteTitleWidget	= CardService.newSelectionInput()
+		.setTitle('Time entry comment')
+		.setFieldName(EUserProperty.OVERWRITE_TITLE)
+		.setType(CardService.SelectionInputType.DROPDOWN)
+		.addItem('Use title', '0', !overwriteTitle)
+		.addItem('Use description if not empty', '1', overwriteTitle);
+
+	defaulOptionsSection.addWidget(overwriteTitleWidget);
+
 
 	const footerSection = CardService.newFixedFooter().setPrimaryButton(saveUserConfigWIdget);
 	const card = CardService
@@ -86,11 +97,14 @@ function onSaveUserConfig (e: IOnSaveUserConfigEvent) {
 	const apiUrl 			= e.formInput[EUserProperty.API_URL] || '';
 	const defaultActivity 	= e.formInput[EUserProperty.DEFAULT_ACTIVITY] || '';
 	const calendarName 		= e.formInput[EUserProperty.CALENDAR_NAME] || '';
+	const overwriteTitle 	= e.formInput[EUserProperty.OVERWRITE_TITLE] || '';
 	const isValidUrl 		= Utils.isURL(apiUrl);
 	let errorMessage 		= '';
 	let errorState 			= false;
 
+	console.log(e.formInput, overwriteTitle);
 	User.setProperty(EUserProperty.API_TOKEN, apiToken);
+	User.setOverwriteTitle(overwriteTitle);
 
 	if(defaultActivity) {
 		User.setProperty(EUserProperty.DEFAULT_ACTIVITY, defaultActivity);

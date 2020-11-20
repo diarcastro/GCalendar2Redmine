@@ -7,6 +7,7 @@
 function onHomepage(e: IHomepageTriggerEvent, timestamp: number = null): GoogleAppsScript.Card_Service.Card {
 	const hasConfiguration	= User.getApiUrl();
 	const calendarName 	   	= User.getCalendarName();
+	const overwriteTitle 	= User.getOverwriteTitle();
 
 	/* If there is no configuration sabed before it shows the configuration page */
 	if(!hasConfiguration) {
@@ -76,12 +77,18 @@ function onHomepage(e: IHomepageTriggerEvent, timestamp: number = null): GoogleA
 				issueUrl,
 			} = eventData;
 
-			const cleanDescription = Utils.cleanText(description, true);
 			const linkIssue = issueId ? `<a href="${issueUrl}" title="Go to Redmine to see the issue">${title}</a>` : title;
-			const eventText = `${linkIssue}
+			let eventText = `${linkIssue}
 <b>Hours: </b> ${hours}
-<b>Activity: </b> ${activity}
-<b>Description: </b> ${cleanDescription}`;
+<b>Activity: </b> ${activity}`;
+
+			if (overwriteTitle) {
+				const cleanDescription = Utils.cleanText(description, true);
+				if (cleanDescription !== title) {
+					eventText += `
+<b>Comments: </b> ${cleanDescription}`
+				}
+			}
 			const eventWidget = CardService.newTextParagraph().setText(eventText);
 
 			if (issueId) {
@@ -170,6 +177,7 @@ function saveEventsOnRedmine (event:ISaveEventOnRedmineEvent): GoogleAppsScript.
 
 	const date = eventsOnDate && eventsOnDate.length && eventsOnDate[0];
 	const timestamp	= date && date.msSinceEpoch;
+	const overwriteTitle = User.getOverwriteTitle();
 
 	try {
 		const calendar 			= User.getRedmineCalendar();
@@ -190,6 +198,7 @@ function saveEventsOnRedmine (event:ISaveEventOnRedmineEvent): GoogleAppsScript.
 						issueId,
 						hours,
 						activityId,
+						title,
 						description,
 					} = eventData;
 
@@ -198,7 +207,7 @@ function saveEventsOnRedmine (event:ISaveEventOnRedmineEvent): GoogleAppsScript.
 					data['time_entry[spent_on]'] 	= Utils.getDateForService(currentDate);
 					data['time_entry[hours]'] 		= hours;
 					data['time_entry[activity_id]'] = activityId;
-					data['time_entry[comments]'] 	= description;
+					data['time_entry[comments]'] 	= overwriteTitle ? description : title;
 
 					return data;
 				});
@@ -226,12 +235,10 @@ Please check if the id is correct.`;
 					const eventData = EventUtils.parseEvent(event);
 					const {
 						activity,
-						description,
 					} = eventData;
 
 					EventUtils.markAsSaved(event, timeEntry);
 					event.setLocation(activity);
-					event.setDescription(description);
 				});
 			}
 		}
