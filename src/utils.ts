@@ -97,6 +97,23 @@ const Utils = {
 			'(\\#[-a-z\\d_]*)?$','i'); // fragment locator
 
 		return !!pattern.test(url);
+	},
+	/**
+	 * Remote tags from a text and truncate it
+	 * @param text Text to clean and truncate
+	 * @param truncate Is going the text to be truncated?
+	 * @param maxStringLength Maximum number of character for the truncated text
+	 */
+	cleanText (text: string, truncate:boolean = false, maxStringLength:number = 200): string {
+		const cleanText = text.replace(/<[^>]+>/g, "");
+
+		if (!truncate) {
+			return cleanText;
+		}
+
+		const truncatedText = cleanText.substr(0, maxStringLength);
+		const ellipsis =  cleanText.length > maxStringLength ? '...' : '';
+		return `${truncatedText}${ellipsis}`;
 	}
 }
 

@@ -76,11 +76,12 @@ function onHomepage(e: IHomepageTriggerEvent, timestamp: number = null): GoogleA
 				issueUrl,
 			} = eventData;
 
+			const cleanDescription = Utils.cleanText(description, true);
 			const linkIssue = issueId ? `<a href="${issueUrl}" title="Go to Redmine to see the issue">${title}</a>` : title;
 			const eventText = `${linkIssue}
 <b>Hours: </b> ${hours}
 <b>Activity: </b> ${activity}
-<b>Description: </b> ${description}`;
+<b>Description: </b> ${cleanDescription}`;
 			const eventWidget = CardService.newTextParagraph().setText(eventText);
 
 			if (issueId) {
